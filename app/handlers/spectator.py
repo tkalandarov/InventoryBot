@@ -13,7 +13,7 @@ from aiogram.filters import CommandObject
 from aiogram.filters.command import Command
 from app.keyboards import get_username
 from app.barcodes.barcode_reader import get_code
-from app.states.spectator_states import BarcodeImage, ArticleSearch, ProblematicDevices
+from app.states.spectator_states import BarcodeImage, ArticleSearch
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from app.filters.role_filter import RoleCheck, role_check_function
@@ -66,47 +66,54 @@ async def barcode_processing(message: types.Message, state: FSMContext):
     os.remove(filepath)
     if status:
         if not(await article_guard(data)):
-            #If article doesn't exist
-            #If user is worker, then allow them to make records here
+            # If article doesn't exist
+            # If user is worker, then allow them to make records here
             if message.from_user.id in await get_users_by_role("worker"):
                 buttons = [types.InlineKeyboardButton(text="Создать новую запись", callback_data=f"create.{data}")]
                 await message.answer(
-                    f"Устройство с артикулом: {data} не было найдено.",
-                    reply_markup=inline_row_menu(buttons)
+                    f"Товар с артикулом: {data} не был найден.",
+                    reply_markup=inline_row_menu(buttons),
                 )
             else:
                 await message.answer(
-                    f"Устройство с артикулом: {data} не было найдено.",
-                    reply_markup=reply_row_menu(["Отмена"])
+                    f"Товар с артикулом: {data} не найден.",
+                    reply_markup=reply_row_menu(["Отмена"]),
                 )
             await state.clear()
-        
-        #If article exists
+
+        # If article exists
         else:
-            device_info, photo = await get_device_info(data)
-            
+            item_info, photo = await get_item_info(data)
+
             if message.from_user.id in await get_users_by_role("worker"):
-                await message.answer(device_info, reply_markup=get_redact_menu(data), parse_mode="HTML")
+                await message.answer(item_info, reply_markup=get_redact_menu(data), parse_mode="HTML")
                 try:
                     await message.answer_photo(
-                        photo, caption=f"Фотография устройства {data}",
-                        reply_markup=get_menu()
+                        photo,
+                        caption=f"Фотография товара {data}",
+                        reply_markup=get_menu(),
                     )
                 except Exception as e:
-                    print(f'Exception found while trying to send photo of device: {photo}',
-                    file = sys.stderr)
-                    await message.answer("Главное меню", reply_markup=get_menu())
+                    print(
+                        f"Exception found while trying to send photo of item: {photo}",
+                        file=sys.stderr,
+                    )
+                    #await message.answer("Главное меню", reply_markup=get_menu())
             else:
-                await message.answer(device_info, parse_mode="HTML")
+                await message.answer(item_info, parse_mode="HTML")
                 try:
                     await message.answer_photo(
-                        photo, caption=f"Фотография устройства {data}",
-                        reply_markup=get_menu()
+                        photo,
+                        caption=f"Фотография товара {data}",
+                        reply_markup=get_menu(),
                     )
                 except Exception as e:
-                    print(f'Exception found while trying to send photo of device: {photo}', file = sys.stderr)
-                    await message.answer("Главное меню", reply_markup=get_menu())
-                
+                    print(
+                        f"Exception found while trying to send photo: {photo}",
+                        file=sys.stderr,
+                    )
+                    #await message.answer("Главное меню", reply_markup=get_menu())
+
             await state.clear()
     else:
         await message.answer(
@@ -143,97 +150,54 @@ async def article_search_confirmation_process(message: types.Message, state: FSM
     results = data['articles']
     articleNumber = results[int(message.text)-1]
     if not(await article_guard(articleNumber)):
-        #If article doesn't exist
-        #If user is worker, then allow them to make records here
+        # If article doesn't exist
+        # If user is worker, then allow them to make records here
         if message.from_user.id in await get_users_by_role("worker"):
             buttons = [types.InlineKeyboardButton(text="Создать новую запись", callback_data=f"create.{articleNumber}")]
             await message.answer(
-                f"Устройство с артикулом: {articleNumber} не было найдено.",
-                reply_markup=inline_row_menu(buttons)
+                f"Товар с артикулом: {articleNumber} не найден.",
+                reply_markup=inline_row_menu(buttons),
             )
         else:
             await message.answer(
-                f"Устройство с артикулом: {articleNumber} не было найдено.",
-                reply_markup=reply_row_menu(["Отмена"])
+                f"Товар с артикулом: {articleNumber} не найден.",
+                reply_markup=reply_row_menu(["Отмена"]),
             )
-        
-    #If article exists
+
+    # If article exists
     else:
-        device_info, photo = await get_device_info(articleNumber)
+        item_info, photo = await get_item_info(articleNumber)
         if message.from_user.id in await get_users_by_role("worker"):
-            await message.answer(device_info, reply_markup=get_redact_menu(articleNumber), parse_mode="HTML")
+            await message.answer(item_info, reply_markup=get_redact_menu(articleNumber),parse_mode="HTML",)
             try:
-                await message.answer_photo(
-                    photo, caption=f"Фотография устройства {articleNumber}",
-                    reply_markup=get_menu()
-                )
+                await message.answer_photo(photo,caption=f"Фотография товара {articleNumber}",reply_markup=get_menu())
             except Exception as e:
-                print(f'Exception found while trying to send photo of device: {photo}', file = sys.stderr)
+                print(f"Exception found while trying to send photo with id={photo}: {e}",file=sys.stderr)
                 await message.answer("Главное меню", reply_markup=get_menu())
         else:
-            await message.answer(device_info, parse_mode="HTML")
+            await message.answer(item_info, parse_mode="HTML")
             try:
                 await message.answer_photo(
-                    photo, caption=f"Фотография устройства {articleNumber}",
-                    reply_markup=get_menu()
+                    photo,
+                    caption=f"Фотография товара {articleNumber}",
+                    reply_markup=get_menu(),
                 )
             except Exception as e:
-                print(f'Exception found while trying to send photo of device: {photo}', file = sys.stderr)
+                print(
+                    f"Exception found while trying to send photo: {photo}",
+                    file=sys.stderr,
+                )
                 await message.answer("Главное меню", reply_markup=get_menu())
 
     await state.clear()
 
 """
-New Device creation lock
+New Item creation lock
 """
 
-@router.message(F.text.lower() == "новое устройство", ~(RoleCheck("worker")))
-async def new_device_decline_spectator(message: types.Message):
+
+@router.message(F.text.lower() == "новый товар", ~(RoleCheck("worker")))
+async def new_item_decline_spectator(message: types.Message):
     await message.answer(
-        "Вы не можете внести запись о новом устройстве.",
-        reply_markup=get_menu()
+        "Вы не можете внести запись о новом товаре.", reply_markup=get_menu()
     )
-
-"""
-Problematic Devices menu
-"""
-
-@router.message(F.text.lower() == "проблемные устройства", RoleCheck("spectator"))
-async def problematic_devices_menu(message: types.Message, state: FSMContext):
-    articles = await get_problematic_devices()
-    if len(articles)!=0:
-        article = articles[0]['articlenumber']
-        await state.set_state(ProblematicDevices.init)
-        keyboard = get_problematic_device_keyboard(article) if await role_check_function(message.from_user.id, "worker") else []
-        await message.answer(
-            await get_problematic_device_info(article),
-            reply_markup=paginator(keyboard, "problematic", 0)
-        )
-    else:
-        await message.answer(
-            "Проблемных устройств на данный момент не имеется.",
-            reply_markup=get_menu()
-        )
-
-@dp.callback_query(ProblematicDevices.init, PaginationValues.filter(F.action.in_(["next", "prev"])), RoleCheck("spectator"))
-async def problematic_devices_pageswap(callback: types.CallbackQuery, callback_data: PaginationValues):
-    articles = await get_problematic_devices()
-    if len(articles)==0:
-        await message.answer("Проблемных устройств на данный момент не имеется.", reply_markup=get_menu())
-    else:
-        current_page = int(callback_data.page)
-        page = None
-
-        if callback_data.action == "prev":
-            page = current_page-1 if current_page>0 else len(articles)-1 #previous page
-        else:
-            page = current_page+1 if current_page<(len(articles)-1) else 0 #next page
-        
-        with suppress(TelegramBadRequest):
-            article = articles[page]['articlenumber']
-            keyboard = get_problematic_device_keyboard(article) if await role_check_function(callback.message.chat.id, "worker") else []
-            await callback.message.edit_text(
-                await get_problematic_device_info(article),
-                reply_markup = paginator(keyboard, "problematic", page)
-            )
-    await callback.answer()

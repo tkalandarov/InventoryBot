@@ -8,7 +8,5 @@ class Logs(StatesGroup):
 
 class BackupUpload(StatesGroup):
     users = State()
-    devices = State()
-    problematicDevices = State()
-    software = State()
-    notes = State()
+    items = State()
+    transactions = State()

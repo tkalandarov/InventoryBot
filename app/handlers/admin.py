@@ -30,10 +30,10 @@ async def get_admin_dashboard(message: types.Message):
 Backup
 """
 
-#Download backup
+# Download backup
 @router.callback_query(RoleCheck("admin"), F.data == "backup_download")
 async def download_backup(callback: types.CallbackQuery):
-    tables = ['users', 'devices', 'problematicdevices', 'software', 'notes']
+    tables = ["users", "storeditems", "transactions"]
     for table in tables:
         await do_backup(table)
         filepath = types.FSInputFile(f'app/backups/{table}.csv')
@@ -43,10 +43,10 @@ async def download_backup(callback: types.CallbackQuery):
             await callback.message.answer(f'Непредвиденная ошибка: {e}')
         await callback.answer()
 
-#Upload backup
+# Upload backup
 @router.callback_query(RoleCheck("admin"), F.data == "backup_upload")
 async def upload_backup(callback: types.CallbackQuery, state: FSMContext):
-    tables = ['users', 'devices', 'problematicdevices', 'software', 'notes']
+    tables = ["users", "storeditems", "transactions"]
     await state.set_state(BackupUpload.users)
     await state.update_data(tables = tables)
 
@@ -76,59 +76,26 @@ async def upload_backup_users_process(message: types.Message, state: FSMContext)
         document = message.document
         await bot.download(document, destination="app/uploaded_backups/users.csv")
         await do_upload_backup("users")
-        await state.set_state(BackupUpload.devices)
-        await message.answer("Загрузите таблицу с устройствами (devices.csv):", reply_markup=reply_row_menu(["Отмена"]))
+        await state.set_state(BackupUpload.items)
+        await message.answer(
+            "Загрузите таблицу с товарами (storeditems.csv):",
+            reply_markup=reply_row_menu(["Отмена"]),
+        )
     except Exception as e:
         await state.clear()
         await message.answer(f"Непредвиденная ошибка: {e}", reply_markup=get_menu())
 
-@router.message(RoleCheck("admin"), BackupUpload.devices, F.document)
-async def upload_backup_devices_process(message: types.Message, state: FSMContext):
+
+@router.message(RoleCheck("admin"), BackupUpload.items, F.document)
+async def upload_backup_stored_items_process(message: types.Message, state: FSMContext):
     try:
         document = message.document
-        await bot.download(document, destination="app/uploaded_backups/devices.csv")
-        await do_upload_backup("devices")
-        await state.set_state(BackupUpload.problematicDevices)
-        await message.answer("Загрузите таблицу с проблемными устройствами (problematicdevices.csv):", reply_markup=reply_row_menu(["Отмена"]))
+        await bot.download(document, destination="app/uploaded_backups/storeditems.csv")
+        await do_upload_backup("storeditems")
     except Exception as e:
         await state.clear()
         await message.answer(f"Непредвиденная ошибка: {e}", reply_markup=get_menu())
 
-@router.message(RoleCheck("admin"), BackupUpload.problematicDevices, F.document)
-async def upload_backup_problematic_devices_process(message: types.Message, state: FSMContext):
-    try:
-        document = message.document
-        await bot.download(document, destination="app/uploaded_backups/problematicdevices.csv")
-        await do_upload_backup("problematicdevices")
-        await state.set_state(BackupUpload.software)
-        await message.answer("Загрузите таблицу с программным обеспечением (software.csv):", reply_markup=reply_row_menu(["Отмена"]))
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"Непредвиденная ошибка: {e}", reply_markup=get_menu())
-
-@router.message(RoleCheck("admin"), BackupUpload.software, F.document)
-async def upload_backup_software_process(message: types.Message, state: FSMContext):
-    try:
-        document = message.document
-        await bot.download(document, destination="app/uploaded_backups/software.csv")
-        await do_upload_backup("software")
-        await state.set_state(BackupUpload.notes)
-        await message.answer("Загрузите таблицу с заметками (software.csv):", reply_markup=reply_row_menu(["Отмена"]))
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"Непредвиденная ошибка: {e}", reply_markup=get_menu())
-
-@router.message(RoleCheck("admin"), BackupUpload.notes, F.document)
-async def upload_backup_notes_process(message: types.Message, state: FSMContext):
-    try:
-        document = message.document
-        await bot.download(document, destination="app/uploaded_backups/notes.csv")
-        await do_upload_backup("notes")
-        await state.clear()
-        await message.answer("Загрузка данных успешно завершена. Проверьте целостность данных в ходе использования бота.", reply_markup=get_menu())
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"Непредвиденная ошибка: {e}", reply_markup=get_menu())
 
 """
 User Manipulation
@@ -168,8 +135,8 @@ async def make_admin(message: types.Message, command: CommandObject): # /makeadm
     if command.args:
         userid = int(command.args)
         try:
-            result = await add_user(userid, "admin")            
-            
+            result = await add_user(userid, "admin")
+
             await message.answer(f"Пользователь {await get_username(userid)} добавлен в список администраторов.")
         except Exception as e:
             await message.answer(f"Exception found: {e}")
@@ -183,7 +150,7 @@ async def remove_admin(message: types.Message, command: CommandObject):
             try:
                 result = await delete_user(userid)
                 await message.answer(f"Пользователь {await get_username(userid)} удалён из списка администраторов.")
-                
+
             except Exception as e:
                 await message.answer(f"Exception found: {e}")
         else:
@@ -233,15 +200,15 @@ Logs
 
 @router.callback_query(F.data == 'logs', RoleCheck("admin"))
 async def logs_callback(callback: types.CallbackQuery, state: FSMContext):
-    
-    directory = f"/~/KeepInventory/logs"
+
+    directory = f"/~/InventoryBot/logs"
     logs = get_filenames(directory)
     print(len(logs), file=sys.stderr)
     if len(logs) != 0:
         answer_text = f"<b>Список доступных логов:</b>\n\n"
         for index, log in enumerate(logs):
             answer_text+=f"{index+1}. {log}\n"
-        
+
         answer_text+=f"\nОтправьте номер лога, который хотите прочитать:"
         await state.set_state(Logs.confirmation)
         await state.update_data(logs = logs)
@@ -257,16 +224,16 @@ async def logs_process(message: types.Message, state: FSMContext):
     try:
         index = int(message.text)-1
         if index < len(logs) and index >= 0:
-            path = f'/~/KeepInventory/logs/{logs[index]}'
+            path = f"/~/InventoryBot/logs/{logs[index]}"
             await state.clear()
             try:
                 log_info = ''
                 with open(path, 'r') as log:
                     log_info = log.read()
-                
+
                 for c in range(0, len(log_info), 4096):
                     await message.answer(log_info[c:c+4096], reply_markup=get_menu())
-                
+
                 await message.answer(
                     "Удалить лог-файл?",
                     reply_markup=delete_log_keyboard(path)
@@ -291,7 +258,7 @@ async def delete_current_log_process(callback: types.CallbackQuery, callback_dat
 
 @router.callback_query(LogsInfo.filter(F.action == "delete_all_logs"), RoleCheck("admin"))
 async def delete_all_logs_process(callback: types.CallbackQuery, callback_data=LogsInfo):
-    directory = f"/~/KeepInventory/logs"
+    directory = f"/~/InventoryBot/logs"
     logs = get_filenames(directory)
     try:
         for log in logs:

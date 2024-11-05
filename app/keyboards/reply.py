@@ -14,7 +14,16 @@ def reply_column_menu(buttons):
     return builder.as_markup(resize_keyboard=True)
 
 def get_menu():
-    keyboard = reply_column_menu(["Поиск по штрих-коду", "Поиск по артикулу", "Новое устройство", "Заметки", "Программное обеспечение",
-    "Проблемные устройства"])
+    keyboard = reply_column_menu(["Поиск по штрих-коду", "Поиск по артикулу", "Новый товар"])
+
+    return keyboard
+
+def get_transaction_menu():
+    keyboard = reply_column_menu(["История транзакций", "Новая транзакция", "Удалить транзакцию"])
+
+    return keyboard
+
+def get_transaction_type_menu():
+    keyboard = reply_row_menu(["Приход", "Продажа"])
 
     return keyboard

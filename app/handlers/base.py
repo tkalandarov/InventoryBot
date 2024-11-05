@@ -38,9 +38,9 @@ async def my_id(message: types.Message):
 
 @router.message(F.text.lower()=="github")
 async def get_start(message: types.Message, state: FSMContext):
-    await message.answer("https://github.com/hiimluck3r/KeepInventory")
+    await message.answer("https://github.com/tkalandarov/InventoryBot")
 
 
 @router.message(F.text.lower()=="контакты")
 async def get_start(message: types.Message, state: FSMContext):
-    await message.answer("https://linktr.ee/hiimluck3r")
+    await message.answer("https://t.me/timsteaparty")

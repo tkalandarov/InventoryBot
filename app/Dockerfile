@@ -3,7 +3,7 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 
-WORKDIR ~/KeepInventory
+WORKDIR ~/InventoryBot
 
 COPY . ./app
 #probably gonna 
