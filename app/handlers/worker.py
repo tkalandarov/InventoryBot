@@ -17,6 +17,22 @@ from aiogram.exceptions import TelegramBadRequest
 
 router = Router()
 
+async def show_product_info(message: types.Message, articleNumber: str):
+    item_info, photo = await get_item_info(articleNumber)
+    await message.answer(item_info, parse_mode="HTML")
+    try:
+        await message.answer_photo(
+            photo,
+            caption=f"Фотография товара {articleNumber}",
+            reply_markup=get_menu(),
+        )
+    except Exception as e:
+        print(
+            f"Exception found while trying to send photo: {photo}",
+            file=sys.stderr,
+        )
+        #await message.answer("Главное меню", reply_markup=get_menu())
+
 """
 Create new stored item
 """
@@ -174,9 +190,10 @@ async def edit_item_callback(callback: types.CallbackQuery, state: FSMContext, c
     try:
         if action == "transactions":
             await state.update_data(articleNumber=callback_data.articleNumber)
+            await view_transaction_history(callback.message, state)
             await callback.message.answer(
                 answers[action],
-                reply_markup=reply_row_menu(["История транзакций", "Новая транзакция", "Отмена"]),
+                reply_markup=reply_row_menu(["Новая транзакция", "Отмена"]),
             )
         else:
             await callback.message.answer(answers[action], reply_markup=reply_row_menu(["Отмена"]))
@@ -229,7 +246,7 @@ async def change_item_process(message: types.Message, state: FSMContext):
     if is_correct:
         await state.clear()
         await message.answer("Изменения внесены.", reply_markup=get_menu())
-
+        await show_product_info(message, articleNumber)
 
 @router.callback_query(RedactStoredItem.filter(F.action.startswith("delete")), RoleCheck("worker"))
 async def delete_item_process(callback: types.CallbackQuery, callback_data=RedactStoredItem):
@@ -322,6 +339,8 @@ async def confirm_transaction(message: types.Message, state: FSMContext):
     else:
         await message.answer("Транзакция отменена.", reply_markup=get_menu())
     await state.clear()
+    await view_transaction_history(message, state)
+
 
 
 """

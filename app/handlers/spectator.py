@@ -173,7 +173,7 @@ async def article_search_confirmation_process(message: types.Message, state: FSM
                 await message.answer_photo(photo,caption=f"Фотография товара {articleNumber}",reply_markup=get_menu())
             except Exception as e:
                 print(f"Exception found while trying to send photo with id={photo}: {e}",file=sys.stderr)
-                await message.answer("Главное меню", reply_markup=get_menu())
+                #await message.answer("Главное меню", reply_markup=get_menu())
         else:
             await message.answer(item_info, parse_mode="HTML")
             try:
@@ -187,7 +187,7 @@ async def article_search_confirmation_process(message: types.Message, state: FSM
                     f"Exception found while trying to send photo: {photo}",
                     file=sys.stderr,
                 )
-                await message.answer("Главное меню", reply_markup=get_menu())
+                #await message.answer("Главное меню", reply_markup=get_menu())
 
     await state.clear()
 
